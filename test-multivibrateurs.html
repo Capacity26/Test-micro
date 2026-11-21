@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Test en ligne</title>
+<style>
+:root{--bg:#f3f5f2;--card:#fff;--tx:#17211c;--mut:#5b6862;--ac:#0f6b4f;--acx:#fff;--bad:#b3261e;--bd:#d5dbd6;box-sizing:border-box}
+@media (prefers-color-scheme:dark){:root{--bg:#121714;--card:#1a211d;--tx:#e6ece8;--mut:#98a59d;--ac:#4fc298;--acx:#06251a;--bad:#ff8a80;--bd:#2f3a34}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+main{max-width:680px;margin:0 auto;padding:16px}
+h1{font:700 1.55rem/1.25 Georgia,"Times New Roman",serif;margin:8px 0 12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:16px;margin:12px 0}
+.mut{color:var(--mut)}
+.big{font:700 2.6rem/1.1 Georgia,serif;margin:8px 0;font-variant-numeric:tabular-nums}
+label{display:block;font-weight:600;margin:12px 0 4px}
+input[type=text]{width:100%;padding:10px;font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px}
+button{font:inherit;font-weight:600;padding:12px 18px;border-radius:8px;border:0;background:var(--ac);color:var(--acx);cursor:pointer;margin-top:14px}
+button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+#bar{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--bd);padding:calc(8px + env(safe-area-inset-top,0)) 16px 8px;display:flex;justify-content:space-between;font-variant-numeric:tabular-nums}
+#bar b{font-size:1.15rem}
+#bar.low b{color:var(--bad)}
+fieldset{border:1px solid var(--bd);border-radius:10px;background:var(--card);margin:12px 0;padding:12px 14px}
+legend{font-weight:700;padding:0 6px;max-width:100%}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:8px 6px;border-radius:6px;cursor:pointer}
+.opt:has(input:checked){background:color-mix(in srgb,var(--ac) 14%,transparent)}
+.opt input{margin-top:5px}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:10px;font-size:.9rem}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:no-preference){button{transition:opacity .15s}button:active{opacity:.8}}
+.wa{display:block;margin-top:14px;padding:12px 18px;border-radius:8px;background:var(--ac);color:var(--acx);font-weight:600;text-align:center;text-decoration:none}
+.fig{overflow-x:auto;margin:6px 0}.fig svg{min-width:300px;max-width:100%;height:auto;color:var(--tx)}
+</style>
+</head>
+<body>
+
+<div id="bar" hidden><span id="prog"></span><span>Temps restant : <b id="left"></b></span></div>
+
+<main>
+  <h1 id="titre"></h1>
+  <button class="sec" id="cl" type="button">Copier le lien de ce test</button>
+
+  <section id="wait" class="card" hidden>
+    <p>Le test n’est pas encore ouvert. Il commence le <b id="wdate"></b>.</p>
+    <div class="big" id="wcount"></div>
+    <p class="mut">Cette page s’ouvrira automatiquement à l’heure prévue. Gardez-la ouverte.</p>
+  </section>
+
+  <section id="login" class="card" hidden>
+    <p id="info"></p>
+    <label for="nom">Nom et post-nom</label>
+    <input type="text" id="nom" autocomplete="name">
+    <label for="classe">Classe</label>
+    <input type="text" id="classe" placeholder="ex. 3H EQ">
+    <p id="err" class="mut" style="color:var(--bad)"></p>
+    <button id="go">Commencer le test</button>
+  </section>
+
+  <form id="quiz" hidden onsubmit="return false">
+    <div id="qs"></div>
+    <button id="fin" type="button">Terminer et voir ma cote</button>
+  </form>
+
+  <section id="closed" class="card" hidden>
+    <p><b>Le test est terminé.</b> L’accès est fermé.</p>
+    <p class="mut">Si vous n’avez pas pu le passer, contactez votre professeur.</p>
+  </section>
+
+  <section id="result" class="card" hidden>
+    <p class="mut" id="rwho"></p>
+    <div class="big" id="rnote"></div>
+    <p id="rpct"></p>
+    <p>Envoyez ce code de résultat à votre professeur :</p>
+    <div class="code" id="rcode"></div>
+    <a id="wa" class="wa" href="#" target="_blank" rel="noopener">Envoyer le résultat au professeur sur WhatsApp</a>
+    <button class="sec" id="copy">Copier le code</button>
+  </section>
+</main>
+
+<script>
+/* =====================================================================
+   CONFIGURATION : seule partie à modifier pour chaque nouveau test
+   ===================================================================== */
+const CONFIG = {
+  titre: "Test : multivibrateurs et générateurs de signaux en dents de scie",
+  debut: "2026-11-24T17:00",   // date et heure de début : AAAA-MM-JJTHH:MM (heure locale)
+  dureeMinutes: 90,           // durée du test ; l’accès se ferme à début + durée
+  whatsapp: "243998883923",   // numéro WhatsApp du professeur avec indicatif, sans le +
+  questions: [
+    // Q("question", figure ou null, ["A","B","C","D"], indice de la bonne réponse (0 = premier choix)) ; chaque question vaut 1 point
+    // figures : {t:"bjt"} astable à transistors, {t:"bjt",bis:1} bistable, {t:"ujt"}, {t:"gate"} portes logiques, {t:"saw"} dents de scie
+    Q("Le circuit de la figure, à deux transistors NPN et deux condensateurs de couplage croisés, est un multivibrateur :",{t:"bjt"},["Astable","Monostable","Bistable","Trigger de Schmitt"],0),
+    Q("Le circuit de la figure, à deux transistors couplés par des résistances croisées, est un multivibrateur :",{t:"bjt",bis:1},["Astable","Monostable","Bistable (Eccles-Jordan)","Générateur en dents de scie"],2),
+    Q("Combien d’états stables possède un multivibrateur monostable ?",null,["0","1","2","3"],1),
+    Q("Un multivibrateur astable :",null,["Reste indéfiniment dans un état tant qu’on ne le commande pas","Bascule en permanence entre ses deux états sans commande extérieure","Revient à son état stable après une impulsion","Possède deux états stables"],1),
+    Q("Pour l’astable de la figure, la période est T = 0,69·(R1·C1 + R2·C2). Avec R1 = R2 = 10 kΩ et C1 = C2 = 10 nF, T vaut :",{t:"bjt"},["69 µs","138 µs","1,38 ms","6,9 ms"],1),
+    Q("Pour l’astable de la figure, avec T = 138 µs, la fréquence f = 1/T vaut environ :",{t:"bjt"},["1,38 kHz","72 kHz","7,2 kHz","14,5 kHz"],2),
+    Q("Astable symétrique (R1 = R2 = R, C1 = C2 = C), T = 1,38·R·C. On veut f = 1 kHz avec C = 100 nF. La résistance R vaut environ :",{t:"bjt"},["1,4 kΩ","7,2 kΩ","14 kΩ","72 kΩ"],1),
+    Q("Astable symétrique, T = 1,38·R·C. On veut T = 2 ms avec R = 10 kΩ. Le condensateur C vaut environ :",{t:"bjt"},["14,5 nF","1,45 µF","145 nF","14,5 µF"],2),
+    Q("Astable à transistors avec R1 = 10 kΩ, R2 = 20 kΩ et C1 = C2 = 10 nF (T = 0,69·(R1·C1 + R2·C2)). La période vaut environ :",{t:"bjt"},["69 µs","138 µs","207 µs","414 µs"],2),
+    Q("Un monostable à transistor a une durée d’état instable T = 0,69·R·C. Avec R = 47 kΩ et C = 10 µF, T vaut environ :",null,["32 ms","324 ms","3,24 s","0,69 s"],1),
+    Q("Un monostable doit fournir une impulsion de 1 s (T = 0,69·R·C) avec R = 100 kΩ. Le condensateur C vaut environ :",null,["1,45 µF","6,9 µF","14,5 µF","145 µF"],2),
+    Q("Que fait un multivibrateur monostable lorsqu’il reçoit une impulsion de déclenchement ?",null,["Il bascule définitivement dans l’autre état","Il passe dans l’état instable pendant une durée T fixée par R et C, puis revient à son état stable","Il oscille indéfiniment","Il ne change pas d’état"],1),
+    Q("Un bistable de type Eccles-Jordan change d’état :",null,["Spontanément, à intervalles réguliers","Après une durée fixée par un condensateur","Seulement quand une impulsion de commande est appliquée","Jamais"],2),
+    Q("Le circuit de la figure, avec un transistor UJT, une résistance R et un condensateur C reliés à l’émetteur, est :",{t:"ujt"},["Un bistable à transistors","Un oscillateur de relaxation à UJT produisant une tension en dents de scie aux bornes de C","Un monostable à portes logiques","Un redresseur"],1),
+    Q("Oscillateur à UJT : T = R·C·ln(1/(1 − η)). Avec R = 100 kΩ, C = 10 nF et η = 0,63 (ln(1/0,37) ≈ 1), la période vaut environ :",{t:"ujt"},["0,1 ms","0,63 ms","1 ms","10 ms"],2),
+    Q("Oscillateur à UJT avec η = 0,63 (donc T ≈ R·C). On veut f = 500 Hz avec C = 100 nF. La résistance R vaut environ :",{t:"ujt"},["2 kΩ","5 kΩ","20 kΩ","200 kΩ"],2),
+    Q("Dans l’oscillateur à UJT, le condensateur se charge jusqu’à la tension de crête Vp, puis l’UJT devient conducteur. Cette tension vaut :",{t:"ujt"},["Vp = η·VBB + VD (η est le rapport intrinsèque)","Vp = 0 V","Vp = VBB/η","Vp = VBB − VD"],0),
+    Q("Astable à deux inverseurs logiques, de période T ≈ 2,2·R·C. Avec R = 10 kΩ et C = 47 nF, la période vaut environ :",{t:"gate"},["0,47 ms","1,03 ms","2,2 ms","10,3 ms"],1),
+    Q("Astable à deux inverseurs, T ≈ 2,2·R·C. On veut f = 1 kHz avec C = 100 nF. La résistance R vaut environ :",{t:"gate"},["450 Ω","2,2 kΩ","4,5 kΩ","45 kΩ"],2),
+    Q("Le signal en dents de scie de la figure a une période T = 2 ms. Sa fréquence vaut :",{t:"saw"},["200 Hz","500 Hz","2 kHz","5 kHz"],1)
+  ]
+};
+/* ===================== fin de la configuration ===================== */
+
+const $ = id => document.getElementById(id);
+const DEB = new Date(CONFIG.debut).getTime();
+const FIN = DEB + CONFIG.dureeMinutes * 60000;
+const TOTAL = CONFIG.questions.reduce((s, q) => s + q.points, 0);
+const KEY = "test_" + CONFIG.debut;
+let S = {};
+try { S = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+const p2 = n => String(n).padStart(2, "0");
+function dur(ms) {
+  const t = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60;
+  return (h ? h + " h " : "") + p2(m) + " min " + p2(s) + " s";
+}
+function clock(ms) {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  return p2(Math.floor(t / 60)) + ":" + p2(t % 60);
+}
+const fmtDate = ms => new Date(ms).toLocaleString("fr-FR", { dateStyle: "full", timeStyle: "short" });
+
+$("titre").textContent = CONFIG.titre;
+$("wdate").textContent = fmtDate(DEB);
+$("info").textContent = CONFIG.questions.length + " questions, " + TOTAL + " points, " + CONFIG.dureeMinutes +
+  " minutes. Le test se ferme automatiquement le " + fmtDate(FIN) + ". Une seule tentative.";
+
+let built = false, current = "";
+function show(id) {
+  if (current === id) return;
+  current = id;
+  ["wait", "login", "quiz", "closed", "result"].forEach(s => $(s).hidden = s !== id);
+  $("bar").hidden = id !== "quiz";
+  $("cl").hidden = id === "quiz" || id === "result";
+}
+
+function Q(q,fig,choix,bonne){return{q,fig,choix,bonne,points:1};}
+function fig(s){
+  const P=d=>'<path d="'+d+'"/>';
+  const T=(x,y,t,a)=>'<text x="'+x+'" y="'+y+'" text-anchor="'+(a||"middle")+'" fill="currentColor" stroke="none" font-size="12">'+t+'</text>';
+  const D=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="2.6" fill="currentColor" stroke="none"/>';
+  const Rv=(x,a,b)=>{const m=(a+b)/2;return P("M"+x+" "+a+"V"+(m-16)+"M"+x+" "+(m+16)+"V"+b)+'<rect x="'+(x-6)+'" y="'+(m-16)+'" width="12" height="32"/>';};
+  const Rh=(a,b,y,m)=>{const l=Math.min(a,b),r=Math.max(a,b);return P("M"+l+" "+y+"H"+(m-16)+"M"+(m+16)+" "+y+"H"+r)+'<rect x="'+(m-16)+'" y="'+(y-6)+'" width="32" height="12"/>';};
+  const Cv=(x,a,b)=>{const m=(a+b)/2;return P("M"+x+" "+a+"V"+(m-3)+"M"+x+" "+(m+3)+"V"+b+"M"+(x-9)+" "+(m-3)+"H"+(x+9)+"M"+(x-9)+" "+(m+3)+"H"+(x+9));};
+  const Ch=(a,b,y,m)=>{const l=Math.min(a,b),r=Math.max(a,b);return P("M"+l+" "+y+"H"+(m-3)+"M"+(m+3)+" "+y+"H"+r+"M"+(m-3)+" "+(y-8)+"V"+(y+8)+"M"+(m+3)+" "+(y-8)+"V"+(y+8));};
+  const Tr=(cx,cy,k)=>'<circle cx="'+cx+'" cy="'+cy+'" r="18"/>'+P("M"+(cx+6*k)+" "+(cy-10)+"V"+(cy+10)+"M"+(cx+6*k)+" "+(cy-6)+"L"+cx+" "+(cy-18))+'<path d="M'+(cx+6*k)+' '+(cy+6)+'L'+cx+' '+(cy+18)+'" marker-end="url(#ah)"/>';
+  let o,W=300,H=230;
+  if(s.t=="bjt"){
+    o=P("M50 15H270")+T(48,19,"+Vcc","end")+P("M60 205H280")+T(170,222,"0 V");
+    o+=Tr(100,150,1)+Tr(240,150,-1)+T(76,154,"T1","end")+T(264,154,"T2","start");
+    o+=Rv(100,15,100)+P("M100 100V132")+Rv(240,15,100)+P("M240 100V132")+T(92,62,"Rc1","end")+T(248,62,"Rc2","start");
+    o+=P("M100 168V205M240 168V205M106 150H150M234 150H190");
+    o+=D(100,108)+D(240,126)+T(92,104,"S1","end")+T(248,122,"S2","start");
+    if(!s.bis){
+      o+=Rv(150,15,150)+Rv(190,15,150)+T(158,86,"R1","start")+T(182,86,"R2","end");
+      o+=Ch(100,190,108,120)+Ch(240,150,126,215)+D(190,108)+D(150,126)+T(120,92,"C1")+T(215,112,"C2");
+    }else{
+      o+=Rh(100,190,108,120)+P("M190 108V150")+Rh(240,150,126,215)+P("M150 126V150")+D(150,150)+D(190,150);
+      o+=Rv(150,150,205)+Rv(190,150,205)+T(158,184,"R1","start")+T(182,184,"R2","end")+T(120,92,"R3")+T(215,112,"R4");
+    }
+  }else if(s.t=="ujt"){
+    H=235;
+    o=P("M40 15H200")+T(38,19,"+Vcc","end")+P("M40 215H200")+Rv(60,15,130)+D(60,130)+Cv(60,130,215)+T(70,70,"R","start")+T(72,176,"C","start");
+    o+=P("M60 130H140")+'<path d="M140 130L160 138" marker-end="url(#ah)"/>'+P("M160 105V155M160 112L172 100M160 148L172 160")+Rv(172,15,100)+Rv(172,160,215);
+    o+=T(182,62,"R2","start")+T(182,190,"R1","start")+T(108,122,"Vc")+T(150,104,"B2","end")+T(150,162,"B1","end")+T(146,146,"E","end")+D(172,160)+P("M172 160H198")+T(202,164,"Vb1","start");
+  }else if(s.t=="gate"){
+    H=215;
+    o=P("M60 100V140L96 120Z")+'<circle cx="100" cy="120" r="4"/>'+P("M150 100V140L186 120Z")+'<circle cx="190" cy="120" r="4"/>';
+    o+=P("M30 120H60M104 120H150M194 120H250")+D(30,120)+D(127,120)+D(217,120)+T(255,116,"S","start");
+    o+=P("M127 120V60M30 60V120")+Rh(30,127,60,78)+T(78,46,"R")+P("M217 120V190M30 190V120")+Ch(30,217,190,124)+T(124,174,"C");
+    o+=T(78,158,"Inverseur 1",null)+T(168,158,"Inverseur 2",null);
+  }else{
+    H=212;
+    o=P("M50 170H290M50 170V20")+P("M50 170L120 50V170L190 50V170L260 50V170")+'<path d="M50 50H120" stroke-dasharray="4 3"/>';
+    o+=T(46,54,"Vmax","end")+T(292,186,"t","start")+T(54,16,"Vs","start")+P("M120 176V196M190 176V196M120 186H190")+T(155,206,"T");
+  }
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Schéma" fill="none" stroke="currentColor" stroke-width="1.6" font-family="system-ui,sans-serif"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" stroke="none"/></marker></defs>'+o+'</svg>';
+}
+function build() {
+  if (built) return;
+  built = true;
+  S.rep = S.rep || {};
+  const box = $("qs");
+  CONFIG.questions.forEach((q, i) => {
+    const f = document.createElement("fieldset");
+    const l = document.createElement("legend");
+    l.textContent = (i + 1) + ". " + q.q + " (" + q.points + " pt" + (q.points > 1 ? "s" : "") + ")";
+    f.appendChild(l);if(q.fig){const d=document.createElement("div");d.className="fig";d.innerHTML=fig(q.fig);f.appendChild(d);}
+    q.choix.forEach((c, j) => {
+      const lab = document.createElement("label");
+      lab.className = "opt";
+      const r = document.createElement("input");
+      r.type = "radio"; r.name = "q" + i; r.value = j;
+      r.checked = S.rep[i] === j;
+      r.addEventListener("change", () => { S.rep[i] = j; save(); count(); });
+      const sp = document.createElement("span");
+      sp.textContent = c;
+      lab.append(r, sp);
+      f.appendChild(lab);
+    });
+    box.appendChild(f);
+  });
+  count();
+}
+function count() {
+  const n = Object.keys(S.rep || {}).length;
+  $("prog").textContent = "Répondu : " + n + "/" + CONFIG.questions.length;
+}
+
+function checksum(str) {
+  let h = 7;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 1000003;
+  return h.toString(36).toUpperCase();
+}
+
+function submit() {
+  if (S.done) return;
+  let note = 0;
+  CONFIG.questions.forEach((q, i) => { if (S.rep && S.rep[i] === q.bonne) note += q.points; });
+  S.done = true; S.note = note;
+  S.fait = Math.min(Date.now(), FIN);
+  save();
+  showResult();
+}
+function showResult() {
+  const d = new Date(S.fait || Date.now());
+  const base = [S.nom, S.classe, S.note + "/" + TOTAL, d.toLocaleDateString("fr-FR") + " " + p2(d.getHours()) + ":" + p2(d.getMinutes())].join(" | ");
+  $("rwho").textContent = S.nom + " (" + S.classe + ")";
+  $("rnote").textContent = S.note + " / " + TOTAL;
+  $("rpct").textContent = "Soit " + Math.round(S.note / TOTAL * 100) + " %.";
+  $("rcode").textContent = base + " | " + checksum(base);
+  const w=$("wa");
+  if(CONFIG.whatsapp)w.href="https://wa.me/"+CONFIG.whatsapp+"?text="+encodeURIComponent("Résultat du test : "+$("rcode").textContent);
+  else w.hidden=true;
+  show("result");
+}
+
+$("go").addEventListener("click", () => {
+  const nom = $("nom").value.trim(), classe = $("classe").value.trim();
+  if (!nom || !classe) { $("err").textContent = "Entrez votre nom et votre classe pour commencer."; return; }
+  S.nom = nom; S.classe = classe; S.started = true; S.rep = S.rep || {};
+  save(); build(); show("quiz");
+});
+$("fin").addEventListener("click", () => {
+  const manque = CONFIG.questions.length - Object.keys(S.rep || {}).length;
+  if (manque && !confirm(manque + " question(s) sans réponse. Terminer quand même ?")) return;
+  submit();
+});
+$("copy").addEventListener("click", async () => {
+  const t = $("rcode").textContent;
+  try { await navigator.clipboard.writeText(t); $("copy").textContent = "Code copié"; }
+  catch (e) {
+    const r = document.createRange(); r.selectNodeContents($("rcode"));
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    $("copy").textContent = "Code sélectionné : copiez-le";
+  }
+});
+
+$("cl").addEventListener("click", async () => {
+  const u = location.href.split("#")[0];
+  try { await navigator.clipboard.writeText(u); $("cl").textContent = "Lien copié"; }
+  catch (e) { prompt("Copiez ce lien :", u); }
+});
+function tick() {
+  const now = Date.now();
+  if (S.done) { if (current !== "result") showResult(); return; }
+  if (now < DEB) { show("wait"); $("wcount").textContent = dur(DEB - now); return; }
+  if (now >= FIN) {
+    if (S.started) submit(); else show("closed");
+    return;
+  }
+  if (!S.started) { show("login"); return; }
+  build(); show("quiz");
+  $("left").textContent = clock(FIN - now);
+  $("bar").classList.toggle("low", FIN - now < 120000);
+}
+tick();
+setInterval(tick, 500);
+</script>
+</body>
+</html>
