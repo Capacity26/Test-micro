@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Test en ligne</title>
+<style>
+:root{--bg:#f3f5f2;--card:#fff;--tx:#17211c;--mut:#5b6862;--ac:#0f6b4f;--acx:#fff;--bad:#b3261e;--bd:#d5dbd6;box-sizing:border-box}
+@media (prefers-color-scheme:dark){:root{--bg:#121714;--card:#1a211d;--tx:#e6ece8;--mut:#98a59d;--ac:#4fc298;--acx:#06251a;--bad:#ff8a80;--bd:#2f3a34}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+main{max-width:680px;margin:0 auto;padding:16px}
+h1{font:700 1.55rem/1.25 Georgia,"Times New Roman",serif;margin:8px 0 12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:16px;margin:12px 0}
+.mut{color:var(--mut)}
+.big{font:700 2.6rem/1.1 Georgia,serif;margin:8px 0;font-variant-numeric:tabular-nums}
+label{display:block;font-weight:600;margin:12px 0 4px}
+input[type=text]{width:100%;padding:10px;font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px}
+button{font:inherit;font-weight:600;padding:12px 18px;border-radius:8px;border:0;background:var(--ac);color:var(--acx);cursor:pointer;margin-top:14px}
+button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+#bar{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--bd);padding:calc(8px + env(safe-area-inset-top,0)) 16px 8px;display:flex;justify-content:space-between;font-variant-numeric:tabular-nums}
+#bar b{font-size:1.15rem}
+#bar.low b{color:var(--bad)}
+fieldset{border:1px solid var(--bd);border-radius:10px;background:var(--card);margin:12px 0;padding:12px 14px}
+legend{font-weight:700;padding:0 6px;max-width:100%}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:8px 6px;border-radius:6px;cursor:pointer}
+.opt:has(input:checked){background:color-mix(in srgb,var(--ac) 14%,transparent)}
+.opt input{margin-top:5px}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:10px;font-size:.9rem}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:no-preference){button{transition:opacity .15s}button:active{opacity:.8}}
+.wa{display:block;margin-top:14px;padding:12px 18px;border-radius:8px;background:var(--ac);color:var(--acx);font-weight:600;text-align:center;text-decoration:none}
+.fig{overflow-x:auto;margin:6px 0}.fig svg{min-width:300px;max-width:100%;height:auto;color:var(--tx)}
+</style>
+</head>
+<body>
+
+<div id="bar" hidden><span id="prog"></span><span>Temps restant : <b id="left"></b></span></div>
+
+<main>
+  <h1 id="titre"></h1>
+  <button class="sec" id="cl" type="button">Copier le lien de ce test</button>
+
+  <section id="wait" class="card" hidden>
+    <p>Le test n’est pas encore ouvert. Il commence le <b id="wdate"></b>.</p>
+    <div class="big" id="wcount"></div>
+    <p class="mut">Cette page s’ouvrira automatiquement à l’heure prévue. Gardez-la ouverte.</p>
+  </section>
+
+  <section id="login" class="card" hidden>
+    <p id="info"></p>
+    <label for="nom">Nom et post-nom</label>
+    <input type="text" id="nom" autocomplete="name">
+    <label for="classe">Classe</label>
+    <input type="text" id="classe" placeholder="ex. 3H EQ">
+    <p id="err" class="mut" style="color:var(--bad)"></p>
+    <button id="go">Commencer le test</button>
+  </section>
+
+  <form id="quiz" hidden onsubmit="return false">
+    <div id="qs"></div>
+    <button id="fin" type="button">Terminer et voir ma cote</button>
+  </form>
+
+  <section id="closed" class="card" hidden>
+    <p><b>Le test est terminé.</b> L’accès est fermé.</p>
+    <p class="mut">Si vous n’avez pas pu le passer, contactez votre professeur.</p>
+  </section>
+
+  <section id="result" class="card" hidden>
+    <p class="mut" id="rwho"></p>
+    <div class="big" id="rnote"></div>
+    <p id="rpct"></p>
+    <p>Envoyez ce code de résultat à votre professeur :</p>
+    <div class="code" id="rcode"></div>
+    <a id="wa" class="wa" href="#" target="_blank" rel="noopener">Envoyer le résultat au professeur sur WhatsApp</a>
+    <button class="sec" id="copy">Copier le code</button>
+  </section>
+</main>
+
+<script>
+/* =====================================================================
+   CONFIGURATION : seule partie à modifier pour chaque nouveau test
+   ===================================================================== */
+const COL={noir:"#000",marron:"#7b3f00",rouge:"#d62828",orange:"#f77f00",jaune:"#f2c200",vert:"#2a9d3f",bleu:"#1d4ed8",violet:"#7e22ce",gris:"#8a8a8a",blanc:"#ffffff",or:"#c9a227",argent:"#c0c0c0"};
+const DIG=["noir","marron","rouge","orange","jaune","vert","bleu","violet","gris","blanc"];
+const TOL={marron:1,rouge:2,vert:0.5,bleu:0.25,violet:0.1,or:5,argent:10};
+function mult(c){return c=="or"?0.1:c=="argent"?0.01:Math.pow(10,DIG.indexOf(c));}
+function ohm(b){const n=b.length==5?3:2;let v=0;for(let i=0;i<n;i++)v=v*10+DIG.indexOf(b[i]);return v*mult(b[n]);}
+function F(n){return String(+n.toPrecision(3)).replace(".",",");}
+function fo(v){return v>=1e6?F(v/1e6)+" MΩ":v>=1e3?F(v/1e3)+" kΩ":F(v)+" Ω";}
+function place(ok,bad,k){const a=bad.slice(0,3);a.splice(k%4,0,ok);return a;}
+function Q(q,fig,choix,bonne){return{q,fig,choix,bonne,points:1};}
+function qVal(b,k){const v=ohm(b);return Q("Quelle est la valeur de la résistance de la figure (lue avec ses anneaux) ?",{t:"rc",b},place(fo(v),[v/10,v*10,v*100].map(fo),k),k%4);}
+function qTol(b){const t="± "+F(TOL[b[b.length-1]])+" %",c=["± 1 %","± 2 %","± 5 %","± 10 %"];return Q("Quelle est la tolérance de la résistance de la figure ?",{t:"rc",b},c,c.indexOf(t));}
+function qSeq(q,ok,bad,k){return Q(q,null,place(ok,bad,k),k%4);}
+function fig(s){
+  const P=d=>'<path d="'+d+'"/>';
+  let o,W=250,H=90;
+  if(s.t=="rc"){
+    const xs=s.b.length==5?[72,92,112,132,172]:[80,102,124,170];
+    o=P("M10 45H50M200 45H240")+'<rect x="50" y="22" width="150" height="46" rx="14" fill="#e3c79a"/>';
+    s.b.forEach((c,i)=>{o+='<rect x="'+(xs[i]-5)+'" y="22" width="10" height="46" fill="'+COL[c]+'" stroke-width="0.8"/>';});
+  }else if(s.t=="sym"){
+    W=240;H=100;o=P("M10 50H80M160 50H230")+'<rect x="80" y="38" width="80" height="24"/>';
+    if(s.k=="pot"||s.k=="ajust")o+='<path d="M120 8V38" marker-end="url(#ah)"/><circle cx="120" cy="8" r="2.5" fill="currentColor"/>';
+    if(s.k=="ajust")o+=P("M110 8H130");
+    if(s.k=="rheo")o+='<path d="M95 80L145 20" marker-end="url(#ah)"/>';
+  }else{
+    W=160;H=80;o='<rect x="30" y="18" width="100" height="44" fill="#222"/><rect x="14" y="18" width="16" height="44" fill="#bbb"/><rect x="130" y="18" width="16" height="44" fill="#bbb"/><text x="80" y="49" text-anchor="middle" fill="#fff" stroke="none" font-size="20" font-weight="700" font-family="system-ui,sans-serif">'+s.c+'</text>';
+  }
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Figure" fill="none" stroke="currentColor" stroke-width="1.6"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" stroke="none"/></marker></defs>'+o+'</svg>';
+}
+
+const CONFIG = {
+  titre: "Test : les résistances (marquage et technologie)",
+  debut: "2026-12-01T08:00",   // date et heure de début : AAAA-MM-JJTHH:MM (heure locale)
+  dureeMinutes: 60,           // durée du test ; l’accès se ferme à début + durée
+  whatsapp: "243998883923",   // numéro WhatsApp du professeur avec indicatif, sans le +
+  questions: [
+    // Q("question", figure ou null, ["A","B","C","D"], indice de la bonne réponse (0 = premier choix)) ; 1 point par question
+    // générateurs : qVal(["marron","noir","rouge","or"],k) valeur lue sur les anneaux ; qTol([...]) tolérance
+    Q("Quelle est l’unité de la résistance électrique ?",null,["Le volt (V)","L’ampère (A)","L’ohm (Ω)","Le watt (W)"],2),
+    Q("La loi d’Ohm s’écrit :",null,["U = R · I","U = R / I","I = U · R","R = U · I"],0),
+    Q("Une résistance fixe est une résistance :",null,["Dont la valeur ne peut pas être modifiée","Dont la valeur varie avec la lumière","Dont la valeur se règle avec un curseur","Qui possède trois bornes"],0),
+    Q("Une résistance ajustable se règle :",null,["En permanence pendant l’utilisation, avec un bouton","Une seule fois lors de la mise au point, généralement avec un tournevis","Uniquement avec la température","Elle ne se règle jamais"],1),
+    Q("Une résistance variable (potentiomètre, rhéostat) est destinée à être réglée :",null,["Uniquement à la fabrication","Par l’utilisateur pendant le fonctionnement (volume, luminosité…)","Uniquement par le fabricant","Par la chaleur"],1),
+    Q("Un potentiomètre possède :",null,["Deux bornes","Trois bornes : deux extrémités et un curseur","Quatre bornes","Une seule borne"],1),
+    Q("Un potentiomètre est souvent utilisé comme :",null,["Source de tension","Diviseur de tension réglable","Condensateur","Redresseur"],1),
+    Q("Un rhéostat sert surtout à :",null,["Régler l’intensité du courant dans un circuit","Mesurer une tension","Stocker de l’énergie","Amplifier un signal"],0),
+    Q("Dans une résistance à couche de carbone, l’élément résistif est :",null,["Un fil de nichrome enroulé","Une couche de carbone déposée sur un support isolant","Un liquide","Un bloc de cuivre"],1),
+    Q("Par rapport à la couche de carbone, la résistance à couche métallique est :",null,["Moins précise et moins stable","Plus précise et plus stable","Toujours plus grosse","Sans tolérance"],1),
+    Q("La résistance bobinée est surtout utilisée pour :",null,["Les très faibles puissances","Les fortes puissances, car elle supporte un échauffement important","Les circuits intégrés","Les montages en surface"],1),
+    Q("Une résistance CMS est :",null,["Une résistance bobinée à fils","Un composant monté en surface, très petit, sans pattes","Une résistance variable","Un potentiomètre"],1),
+    Q("La puissance dissipée par une résistance se calcule par :",null,["P = R · I²","P = R / I","P = U / R²","P = I / R"],0),
+    Q("Quelle est l’unité de la puissance ?",null,["Le joule (J)","Le watt (W)","Le farad (F)","L’henry (H)"],1),
+    Q("Une résistance de 0,25 W signifie que :",null,["Sa valeur est 0,25 Ω","Elle peut dissiper au maximum 0,25 W sans dommage","Elle supporte 0,25 V","Sa tolérance est de 0,25 %"],1),
+    Q("La tolérance d’une résistance est :",null,["Sa puissance maximale","L’écart maximal admis entre sa valeur réelle et sa valeur nominale","Sa température de fonctionnement","Son nombre de bornes"],1),
+    Q("Une résistance de 1 kΩ à ± 5 % a une valeur réelle comprise entre :",null,["900 Ω et 1 100 Ω","950 Ω et 1 050 Ω","995 Ω et 1 005 Ω","500 Ω et 1 500 Ω"],1),
+    Q("La série E12 comporte, par décade :",null,["6 valeurs","12 valeurs (tolérance ± 10 %)","24 valeurs","96 valeurs"],1),
+    Q("La série E24 comporte, par décade :",null,["12 valeurs","24 valeurs (tolérance ± 5 %)","48 valeurs","6 valeurs"],1),
+    Q("Combien font 4,7 kΩ en ohms ?",null,["47 Ω","470 Ω","4 700 Ω","47 000 Ω"],2),
+    Q("Le symbole de la figure représente une résistance :",{t:"sym",k:"fixe"},["Fixe","Potentiomètre (variable à trois bornes)","Ajustable","Variable à deux bornes (rhéostat)"],0),
+    Q("Le symbole de la figure représente :",{t:"sym",k:"pot"},["Une résistance fixe","Un potentiomètre (variable à trois bornes)","Un rhéostat","Un condensateur"],1),
+    Q("Le symbole de la figure représente :",{t:"sym",k:"rheo"},["Une résistance fixe","Un potentiomètre","Un rhéostat (variable à deux bornes)","Une résistance ajustable à trois bornes"],2),
+    Q("Le symbole de la figure représente une résistance :",{t:"sym",k:"ajust"},["Fixe","Rhéostat","Bobinée","Ajustable (préréglée)"],3),
+    Q("Combien de bornes possède le composant de la figure ?",{t:"sym",k:"pot"},["1","2","3","4"],2),
+    qVal(["marron","noir","rouge","or"],1),
+    qVal(["rouge","rouge","marron","or"],2),
+    qVal(["jaune","violet","rouge","or"],3),
+    qVal(["orange","orange","orange","argent"],0),
+    qVal(["marron","noir","jaune","or"],1),
+    qVal(["vert","bleu","orange","or"],2),
+    qVal(["bleu","gris","noir","or"],3),
+    qVal(["marron","noir","or","or"],0),
+    qVal(["rouge","violet","vert","argent"],1),
+    qVal(["marron","noir","noir","rouge","marron"],2),
+    qVal(["rouge","rouge","noir","marron","rouge"],3),
+    qVal(["jaune","violet","noir","orange","marron"],0),
+    qTol(["marron","noir","rouge","or"]),
+    qTol(["orange","orange","orange","argent"]),
+    qTol(["marron","noir","noir","rouge","marron"]),
+    qSeq("Quelle suite d’anneaux correspond à 4,7 kΩ ± 5 % ?","Jaune, violet, rouge, or",["Jaune, violet, orange, or","Violet, jaune, rouge, or","Jaune, violet, marron, or"],1),
+    qSeq("Quelle suite d’anneaux correspond à 330 Ω ± 5 % ?","Orange, orange, marron, or",["Orange, orange, rouge, or","Orange, orange, noir, or","Marron, orange, orange, or"],2),
+    qSeq("Quelle suite d’anneaux correspond à 1 kΩ ± 5 % ?","Marron, noir, rouge, or",["Marron, noir, marron, or","Marron, noir, orange, or","Marron, rouge, rouge, or"],0),
+    Q("Le code CMS de la figure indique une résistance de :",{t:"cms",c:"472"},["470 Ω","4,7 kΩ","47 kΩ","472 Ω"],1),
+    Q("Le code CMS de la figure indique une résistance de :",{t:"cms",c:"103"},["103 Ω","1 kΩ","10 kΩ","100 kΩ"],2),
+    Q("Le code CMS de la figure indique une résistance de :",{t:"cms",c:"4R7"},["47 Ω","0,47 Ω","4,7 Ω","4,7 kΩ"],2),
+    Q("Le code CMS de la figure à quatre chiffres indique une résistance de :",{t:"cms",c:"1002"},["1 002 Ω","10 kΩ","100 kΩ","1 kΩ"],1),
+    Q("Le code CMS de la figure indique une résistance de :",{t:"cms",c:"R22"},["22 Ω","2,2 Ω","0,22 Ω","0,022 Ω"],2),
+    Q("Un marquage « 2K2 » sur une résistance indique :",null,["22 kΩ","2,2 kΩ","220 Ω","2,2 Ω"],1),
+    Q("Dans le code à trois chiffres des résistances CMS, le dernier chiffre indique :",null,["La tolérance","Le nombre de zéros à ajouter aux deux premiers chiffres","La puissance","La température"],1)
+  ]
+};
+/* ===================== fin de la configuration ===================== */
+
+const $ = id => document.getElementById(id);
+const DEB = new Date(CONFIG.debut).getTime();
+const FIN = DEB + CONFIG.dureeMinutes * 60000;
+const TOTAL = CONFIG.questions.reduce((s, q) => s + q.points, 0);
+const KEY = "test_" + CONFIG.debut;
+let S = {};
+try { S = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+const p2 = n => String(n).padStart(2, "0");
+function dur(ms) {
+  const t = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60;
+  return (h ? h + " h " : "") + p2(m) + " min " + p2(s) + " s";
+}
+function clock(ms) {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  return p2(Math.floor(t / 60)) + ":" + p2(t % 60);
+}
+const fmtDate = ms => new Date(ms).toLocaleString("fr-FR", { dateStyle: "full", timeStyle: "short" });
+
+$("titre").textContent = CONFIG.titre;
+$("wdate").textContent = fmtDate(DEB);
+$("info").textContent = CONFIG.questions.length + " questions, " + TOTAL + " points, " + CONFIG.dureeMinutes +
+  " minutes. Le test se ferme automatiquement le " + fmtDate(FIN) + ". Une seule tentative.";
+
+let built = false, current = "";
+function show(id) {
+  if (current === id) return;
+  current = id;
+  ["wait", "login", "quiz", "closed", "result"].forEach(s => $(s).hidden = s !== id);
+  $("bar").hidden = id !== "quiz";
+  $("cl").hidden = id === "quiz" || id === "result";
+}
+
+function build() {
+  if (built) return;
+  built = true;
+  S.rep = S.rep || {};
+  const box = $("qs");
+  CONFIG.questions.forEach((q, i) => {
+    const f = document.createElement("fieldset");
+    const l = document.createElement("legend");
+    l.textContent = (i + 1) + ". " + q.q + " (" + q.points + " pt" + (q.points > 1 ? "s" : "") + ")";
+    f.appendChild(l);if(q.fig){const d=document.createElement("div");d.className="fig";d.innerHTML=fig(q.fig);f.appendChild(d);}
+    q.choix.forEach((c, j) => {
+      const lab = document.createElement("label");
+      lab.className = "opt";
+      const r = document.createElement("input");
+      r.type = "radio"; r.name = "q" + i; r.value = j;
+      r.checked = S.rep[i] === j;
+      r.addEventListener("change", () => { S.rep[i] = j; save(); count(); });
+      const sp = document.createElement("span");
+      sp.textContent = c;
+      lab.append(r, sp);
+      f.appendChild(lab);
+    });
+    box.appendChild(f);
+  });
+  count();
+}
+function count() {
+  const n = Object.keys(S.rep || {}).length;
+  $("prog").textContent = "Répondu : " + n + "/" + CONFIG.questions.length;
+}
+
+function checksum(str) {
+  let h = 7;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 1000003;
+  return h.toString(36).toUpperCase();
+}
+
+function submit() {
+  if (S.done) return;
+  let note = 0;
+  CONFIG.questions.forEach((q, i) => { if (S.rep && S.rep[i] === q.bonne) note += q.points; });
+  S.done = true; S.note = note;
+  S.fait = Math.min(Date.now(), FIN);
+  save();
+  showResult();
+}
+function showResult() {
+  const d = new Date(S.fait || Date.now());
+  const base = [S.nom, S.classe, S.note + "/" + TOTAL, d.toLocaleDateString("fr-FR") + " " + p2(d.getHours()) + ":" + p2(d.getMinutes())].join(" | ");
+  $("rwho").textContent = S.nom + " (" + S.classe + ")";
+  $("rnote").textContent = S.note + " / " + TOTAL;
+  $("rpct").textContent = "Soit " + Math.round(S.note / TOTAL * 100) + " %.";
+  $("rcode").textContent = base + " | " + checksum(base);
+  const w=$("wa");
+  if(CONFIG.whatsapp)w.href="https://wa.me/"+CONFIG.whatsapp+"?text="+encodeURIComponent("Résultat du test : "+$("rcode").textContent);
+  else w.hidden=true;
+  show("result");
+}
+
+$("go").addEventListener("click", () => {
+  const nom = $("nom").value.trim(), classe = $("classe").value.trim();
+  if (!nom || !classe) { $("err").textContent = "Entrez votre nom et votre classe pour commencer."; return; }
+  S.nom = nom; S.classe = classe; S.started = true; S.rep = S.rep || {};
+  save(); build(); show("quiz");
+});
+$("fin").addEventListener("click", () => {
+  const manque = CONFIG.questions.length - Object.keys(S.rep || {}).length;
+  if (manque && !confirm(manque + " question(s) sans réponse. Terminer quand même ?")) return;
+  submit();
+});
+$("copy").addEventListener("click", async () => {
+  const t = $("rcode").textContent;
+  try { await navigator.clipboard.writeText(t); $("copy").textContent = "Code copié"; }
+  catch (e) {
+    const r = document.createRange(); r.selectNodeContents($("rcode"));
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    $("copy").textContent = "Code sélectionné : copiez-le";
+  }
+});
+
+$("cl").addEventListener("click", async () => {
+  const u = location.href.split("#")[0];
+  try { await navigator.clipboard.writeText(u); $("cl").textContent = "Lien copié"; }
+  catch (e) { prompt("Copiez ce lien :", u); }
+});
+function tick() {
+  const now = Date.now();
+  if (S.done) { if (current !== "result") showResult(); return; }
+  if (now < DEB) { show("wait"); $("wcount").textContent = dur(DEB - now); return; }
+  if (now >= FIN) {
+    if (S.started) submit(); else show("closed");
+    return;
+  }
+  if (!S.started) { show("login"); return; }
+  build(); show("quiz");
+  $("left").textContent = clock(FIN - now);
+  $("bar").classList.toggle("low", FIN - now < 120000);
+}
+tick();
+setInterval(tick, 500);
+</script>
+</body>
+</html>
